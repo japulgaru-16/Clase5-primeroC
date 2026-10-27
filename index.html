@@ -1,0 +1,689 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Clase 5 · Presupuestos en el plano</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --cream:#FAF6EE; --navy:#16305A; --navy-soft:#E9EFF8;
+  --orange:#F97316; --orange-deep:#C2570A; --orange-soft:#FFF1E4;
+  --ink:#26334D; --muted:#6E7C95; --line:#E4E1D5; --card-line:#E2E6EF;
+  --green:#16A34A; --green-soft:#EAF7EF; --red:#DC2626; --red-soft:#FDECEC;
+  --amber-soft:#FFF4DE; --amber-line:#EFC26B; --amber-ink:#7A5A17;
+  --shadow:0 10px 28px rgba(22,48,90,.10);
+}
+html,body{height:100%}
+body{font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,"Helvetica Neue",Arial,sans-serif;background:radial-gradient(1200px 800px at 30% 12%, #1B2E5A 0%, #0C1730 62%);overflow:hidden}
+
+#progress{position:fixed;top:0;left:0;height:4px;width:0%;background:var(--orange);z-index:99;transition:width .45s ease;border-radius:0 3px 3px 0}
+
+#stage{position:absolute;top:50%;left:50%;width:1280px;height:720px;transform:translate(-50%,-50%);background:var(--cream);border-radius:16px;overflow:hidden;box-shadow:0 34px 90px rgba(0,0,0,.5);user-select:none;background-image:linear-gradient(rgba(22,48,90,.045) 1px, transparent 1px),linear-gradient(90deg, rgba(22,48,90,.045) 1px, transparent 1px);background-size:40px 40px}
+
+/* ---- diapositivas ---- */
+.slide{position:absolute;inset:0;padding:46px 72px 78px;display:flex;flex-direction:column;opacity:0;visibility:hidden;transform:translateX(46px);transition:opacity .5s ease, transform .5s ease, visibility 0s linear .5s}
+.slide.active{opacity:1;visibility:visible;transform:none;transition:opacity .5s ease, transform .5s ease;z-index:2}
+.slide.before{transform:translateX(-46px)}
+
+.s-head{display:flex;align-items:center;gap:16px}
+.s-title{font-size:38px;font-weight:800;color:var(--navy);letter-spacing:-.6px;line-height:1.1}
+.chip{display:inline-flex;align-items:center;gap:8px;flex:none;background:var(--orange);color:#fff;font-size:12.5px;font-weight:800;letter-spacing:.13em;text-transform:uppercase;padding:8px 15px;border-radius:999px}
+.chip.navy{background:var(--navy)}
+.chip.soft{background:var(--orange-soft);color:var(--orange-deep);border:1.5px solid #F6C79E}
+.chip.ghost{background:#fff;color:var(--navy);border:1.5px solid #C9D6EC}
+.push{margin-left:auto}
+
+.s-foot{position:absolute;left:72px;right:72px;bottom:18px;display:flex;justify-content:space-between;align-items:center;gap:18px;font-size:13px;color:var(--muted);border-top:1.5px solid var(--line);padding-top:11px}
+.s-foot .r{display:flex;align-items:center;gap:18px;font-weight:600}
+.hint{display:inline-flex;align-items:center;color:var(--orange-deep);font-weight:700}
+.hintdot{width:8px;height:8px;border-radius:50%;background:var(--orange);display:inline-block;margin-right:8px;animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.3}50%{opacity:1}}
+
+.card{background:#fff;border:1.5px solid var(--card-line);border-radius:16px;box-shadow:var(--shadow)}
+
+/* matemáticas */
+.math{font-family:Georgia,"Times New Roman",serif}
+.math var{font-style:italic;padding:0 2px}
+
+/* revelado paso a paso */
+.reveal{opacity:0;transform:translateY(16px) scale(.985);transition:opacity .5s ease, transform .5s cubic-bezier(.2,.7,.3,1)}
+.reveal.shown{opacity:1;transform:none}
+@keyframes pop{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* ---- portada ---- */
+.cover{align-items:center;justify-content:center;text-align:center}
+.chiprow{display:flex;gap:12px;margin-bottom:28px}
+.cover h1{font-size:47px;line-height:1.12;letter-spacing:-1.2px;color:var(--navy);font-weight:800}
+.cover .sub{margin-top:14px;font-size:24px;font-weight:700;color:var(--orange)}
+.cred{margin-top:40px;padding:22px 34px;border-radius:20px}
+.cred-grid{display:grid;grid-template-columns:repeat(2,340px);gap:16px 44px}
+.cred-item{display:flex;align-items:center;gap:13px;text-align:left}
+.cred-item .ic{flex:none;width:42px;height:42px;border-radius:12px;background:var(--navy-soft);color:var(--navy);display:flex;align-items:center;justify-content:center}
+.lbl{font-size:11.5px;font-weight:700;text-transform:uppercase;letter-spacing:.11em;color:var(--muted)}
+.val{font-size:16.5px;font-weight:800;color:var(--navy);line-height:1.3}
+.pair{position:absolute;font-family:Georgia,serif;font-style:italic;font-weight:700;font-size:29px;color:var(--navy);opacity:.12;pointer-events:none}
+
+/* ---- objetivo ---- */
+.oa{display:flex;overflow:hidden;margin-top:20px}
+.oa-bar{flex:none;width:9px;background:var(--orange)}
+.oa-in{padding:24px 34px}
+.oa-k{font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--orange-deep);margin-bottom:9px}
+.oa-t{font-size:23px;line-height:1.62;color:var(--navy);font-weight:600}
+.oa-t b{color:var(--orange-deep)}
+.minis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:22px}
+.mini{padding:18px}
+.mic{width:40px;height:40px;border-radius:11px;background:var(--orange-soft);color:var(--orange);display:flex;align-items:center;justify-content:center;margin-bottom:11px}
+.mt{font-size:17.5px;font-weight:800;color:var(--navy)}
+.md{font-size:14.5px;color:var(--muted);line-height:1.5;margin-top:4px}
+
+/* ---- pregunta destacada / instruccional ---- */
+.qbox{display:flex;gap:15px;align-items:flex-start;margin-top:16px;background:var(--orange-soft);border:2.5px solid var(--orange);border-radius:16px;padding:17px 24px}
+.qbox .qic{flex:none;color:var(--orange);margin-top:3px}
+.qbox .q{font-size:22px;font-weight:800;color:var(--navy);line-height:1.5}
+.qbox em{font-style:normal;color:var(--orange-deep);text-decoration:underline 3px rgba(249,115,22,.35);text-underline-offset:5px}
+.inst{display:flex;align-items:center;gap:14px;background:var(--navy);border-radius:16px;padding:14px 22px;color:#E8EEFA;font-size:18.5px;line-height:1.5}
+.inst svg{flex:none;color:#FFB067}
+.inst b{color:#FFC581}
+
+/* ---- layout columnas ---- */
+.cols{display:flex;gap:16px;align-items:flex-start;margin-top:16px;flex:1}
+.col{display:flex;flex-direction:column;gap:14px}
+.col .qbox{margin-top:0}
+.plane-card{padding:12px 14px;display:flex;flex-direction:column;align-items:center;gap:8px}
+.plane-head{display:flex;align-items:center;gap:10px}
+.inter-card{padding:15px 18px}
+.inter-k{font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--orange-deep);margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.btn-mini{padding:7px 14px;font-size:13.5px;border-radius:10px;background:#fff;color:var(--muted);border:1.5px solid var(--card-line);cursor:pointer;font-weight:700}
+.btn-mini:hover{background:var(--navy-soft);color:var(--navy);border-color:#C9D6EC}
+.btn{padding:9px 18px;font-size:14.5px;font-weight:800;border-radius:11px;background:var(--orange);color:#fff;border:none;cursor:pointer;box-shadow:0 4px 12px rgba(249,115,22,.28)}
+.btn:hover{background:var(--orange-deep)}
+.btn.ghost{background:#fff;color:var(--navy);border:1.5px solid #C9D6EC;box-shadow:none}
+.btn.ghost:hover{background:var(--navy-soft)}
+
+/* ---- Clase 5: problema y menú ---- */
+.prob{padding:18px 24px}
+.prob-k{display:flex;align-items:center;gap:10px;font-size:12px;font-weight:800;letter-spacing:.12em;text-transform:uppercase;color:var(--orange-deep);margin-bottom:10px}
+.prob-t{font-size:17.5px;line-height:1.68;color:var(--ink)}
+.prob-t b{color:var(--navy)}
+.datachips{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.chip.mini{padding:5px 11px;font-size:12px;letter-spacing:.04em;text-transform:none}
+.menu-row{display:flex;gap:12px;margin-top:12px}
+.menu-item{flex:1;display:flex;align-items:center;gap:12px;background:var(--navy-soft);border:1.5px solid #C9D6EC;border-radius:14px;padding:12px 16px}
+.menu-item .mic2{flex:none;width:44px;height:44px;border-radius:12px;background:#fff;color:var(--orange);display:flex;align-items:center;justify-content:center;border:1.5px solid #F6C79E}
+.menu-item .mn{font-size:14.5px;font-weight:800;color:var(--navy);line-height:1.3}
+.menu-item .mp{font-family:Georgia,serif;font-size:19px;font-weight:800;color:var(--orange-deep)}
+.note-card{padding:14px 18px;background:var(--navy-soft);border:1.5px solid #C9D6EC;border-radius:14px;font-size:15.5px;color:var(--navy);line-height:1.55;font-weight:600}
+.eqline{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--card-line);border-radius:12px;padding:10px 16px;font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--navy)}
+.eqline .arr{color:var(--orange-deep);font-family:"Segoe UI",Arial,sans-serif;font-size:14px;font-weight:800}
+
+/* ---- Clase 5: plano cartesiano ---- */
+.grid-l{stroke:rgba(22,48,90,.09);stroke-width:1}
+.axl{stroke:#16305A;stroke-width:2.2}
+.tick{fill:#6E7C95;font-size:12px;font-family:Georgia,serif}
+.axname{fill:#16305A;font-size:15px;font-style:italic;font-family:Georgia,serif;font-weight:700}
+.fron{stroke-width:3;stroke-linecap:round;fill:none}
+.fron.f36{stroke:#16305A}
+.fron.f48{stroke:#F97316}
+.band{stroke:rgba(22,163,74,.14);fill:none}
+.corte{fill:#fff;stroke-width:2.4}
+.lvl{stroke:#8296B8;stroke-width:2;stroke-dasharray:6 5;fill:none}
+.lvl.lvl42{stroke:#F97316;stroke-width:2.6}
+.lab36{font-family:Georgia,serif;font-size:13px;font-weight:700;fill:#16305A;paint-order:stroke;stroke:#FAF6EE;stroke-width:4}
+.lab48{font-family:Georgia,serif;font-size:13px;font-weight:700;fill:#C2570A;paint-order:stroke;stroke:#FAF6EE;stroke-width:4}
+.lvllab{font-family:Georgia,serif;font-size:11.5px;font-weight:700;fill:#64748B;paint-order:stroke;stroke:#FAF6EE;stroke-width:3.5}
+.lvllab.lvl42{fill:#C2570A}
+.pt{cursor:pointer}
+#vBase,#vBand,#vLines{pointer-events:none}
+.pt .halo{fill:none;stroke-width:2.5;opacity:0;transition:opacity .25s}
+.pt:hover .halo{opacity:.55}
+.pt .dot{fill:#16305A;stroke:#fff;stroke-width:2.4;transition:fill .25s}
+.pt text{font-family:Georgia,serif;font-size:11px;font-weight:700;fill:#475569;paint-order:stroke;stroke:#FAF6EE;stroke-width:3.5;pointer-events:none}
+.eq-lab{font-family:Georgia,serif;font-size:12px;font-weight:700;fill:#16305A}
+
+/* ---- Clase 5: verificación ---- */
+.readout-eq{font-family:Georgia,serif;font-size:20px;font-weight:700;color:var(--navy);margin-top:3px}
+.readout-eq i{font-style:italic}
+.verdict{display:none;margin-top:10px;border-radius:12px;padding:11px 15px;font-size:15px;line-height:1.5;font-weight:600}
+.verdict.on{display:block;animation:pop .35s ease}
+.verdict.ok{background:var(--green-soft);border:2px solid #B7E4C7;color:#14532D}
+.verdict.no{background:var(--red-soft);border:2px solid #F5C2C2;color:#7F1D1D}
+.verdict.sand{background:var(--amber-soft);border:2px solid var(--amber-line);color:var(--amber-ink)}
+.preset-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.synth{padding:15px 20px;background:var(--green-soft);border:2px solid #B7E4C7;border-radius:14px;font-size:16.5px;color:#14532D;line-height:1.55;font-weight:600}
+.synth b{color:#116232}
+.zones{display:flex;gap:8px;flex-wrap:wrap}
+.zchip{display:inline-flex;align-items:center;gap:8px;background:#fff;border:1.5px solid var(--card-line);border-radius:999px;padding:6px 13px;font-size:12.5px;font-weight:700;color:var(--ink)}
+.zdot{width:11px;height:11px;border-radius:50%;flex:none}
+
+/* ---- Clase 5: institucionalización ---- */
+.big-ineq{display:flex;align-items:center;justify-content:center;gap:14px;background:#fff;border:2px solid var(--card-line);border-radius:14px;padding:14px 20px;font-family:Georgia,serif;font-size:31px;font-weight:800;color:var(--ink);letter-spacing:.5px}
+.big-ineq .n36{color:var(--navy)}
+.big-ineq .n48{color:var(--orange-deep)}
+.big-ineq .mid{color:var(--green);font-size:26px;font-weight:700}
+.conn{padding:16px 22px;display:flex;gap:15px;align-items:flex-start;background:var(--navy-soft);border:1.5px solid #C9D6EC;border-radius:14px}
+.conn .vic{flex:none;width:38px;height:38px;border-radius:12px;background:#fff;color:var(--navy);display:flex;align-items:center;justify-content:center;margin-top:2px}
+.conn-t{font-size:16px;line-height:1.58;color:var(--ink);font-weight:600}
+.conn-t b{color:var(--navy)}
+.hl-a{color:var(--orange-deep);font-weight:800}
+.hl-c{color:#1F7FD1;font-weight:800}
+.hl-f{color:#116232;font-weight:800;text-decoration:underline 3px rgba(22,163,74,.3);text-underline-offset:5px}
+.mini-fam{padding:12px 14px;display:flex;flex-direction:column;align-items:center;gap:6px}
+
+/* feedback genérico */
+.feedback{display:none;margin-top:12px;text-align:center;font-size:17.5px;font-weight:600;border-radius:12px;padding:11px 18px;line-height:1.5}
+.feedback.shown{display:block;animation:pop .35s ease}
+
+/* ---- navegación ---- */
+#hud{position:fixed;right:20px;bottom:16px;display:flex;align-items:center;gap:10px;z-index:99}
+#hud .cnt{color:rgba(255,255,255,.92);font-size:13px;font-weight:700;letter-spacing:.05em;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.18);padding:9px 16px;border-radius:999px}
+#hud button{width:42px;height:42px;border-radius:50%;border:1.5px solid rgba(255,255,255,.25);background:rgba(255,255,255,.1);color:#fff;cursor:pointer;transition:all .2s;display:flex;align-items:center;justify-content:center}
+#hud button:hover{background:var(--orange);border-color:var(--orange);transform:translateY(-1px)}
+</style>
+</head>
+<body>
+<div id="progress"></div>
+
+<div id="stage">
+
+<!-- ============ DIAPOSITIVA 1 · PORTADA ============ -->
+<section class="slide cover">
+  <div class="pair" style="top:104px;left:96px;transform:rotate(-7deg)">4x + 3y = 36</div>
+  <div class="pair" style="top:94px;right:104px;transform:rotate(6deg)">4x + 3y = 48</div>
+  <div class="pair" style="top:338px;left:60px;transform:rotate(5deg)">4x + 3y = 40</div>
+  <div class="pair" style="top:344px;right:66px;transform:rotate(-6deg)">4x + 3y = 44</div>
+  <div class="pair" style="bottom:146px;left:142px;transform:rotate(4deg)"><span style="font-size:23px"><i>f</i>(<i>x</i>, <i>y</i>) = 4x + 3y</span></div>
+  <div class="pair" style="bottom:148px;right:140px;transform:rotate(-5deg)"><span style="font-size:23px">36 &lt; 4x + 3y &lt; 48</span></div>
+
+  <div class="chiprow">
+    <span class="chip">Clase 5</span>
+    <span class="chip navy">Unidad 2 · Matemática · I° Medio</span>
+  </div>
+  <h1>Presupuestos en el plano</h1>
+  <p class="sub">Líneas de nivel y regiones</p>
+
+  <div class="cred card">
+    <div class="cred-grid">
+      <div class="cred-item">
+        <span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg></span>
+        <span><span class="lbl">Profesor en práctica</span><br><span class="val">Javier Pulgar</span></span>
+      </div>
+      <div class="cred-item">
+        <span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><polyline points="16 11 18 13 22 9"/></svg></span>
+        <span><span class="lbl">Profesor guía</span><br><span class="val">Felipe Espinoza</span></span>
+      </div>
+      <div class="cred-item">
+        <span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="3" y1="22" x2="21" y2="22"/><line x1="6" y1="18" x2="6" y2="11"/><line x1="10" y1="18" x2="10" y2="11"/><line x1="14" y1="18" x2="14" y2="11"/><line x1="18" y1="18" x2="18" y2="11"/><polygon points="12 2 20 7 4 7"/></svg></span>
+        <span><span class="lbl">Universidad</span><br><span class="val">Universidad Alberto Hurtado</span></span>
+      </div>
+      <div class="cred-item">
+        <span class="ic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 10 12 5 2 10l10 5 10-5z"/><path d="M6 12v5c0 1.7 2.7 3 6 3s6-1.3 6-3v-5"/></svg></span>
+        <span><span class="lbl">Liceo</span><br><span class="val">Liceo Comercial Luis Correa Prieto</span></span>
+      </div>
+    </div>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span></span>
+  </footer>
+</section>
+
+<!-- ============ DIAPOSITIVA 2 · OBJETIVO ============ -->
+<section class="slide">
+  <header class="s-head">
+    <span class="chip">Clase 5</span>
+    <h2 class="s-title">Objetivo de la Clase</h2>
+  </header>
+
+  <div class="oa card">
+    <div class="oa-bar"></div>
+    <div class="oa-in">
+      <div class="oa-k">Objetivo de aprendizaje</div>
+      <p class="oa-t">&ldquo;<b>Interpretar regiones del plano</b> delimitadas por <b>dos rectas paralelas</b> de la forma <span class="math"><var>a</var><var>x</var> + <var>b</var><var>y</var> = <var>c</var></span>, mediante el <b>análisis de una situación de presupuesto</b> y la <b>evaluación de pares ordenados</b>, abordando de manera <b>flexible y creativa</b>.&rdquo;</p>
+    </div>
+  </div>
+
+  <div class="minis">
+    <div class="mini card">
+      <div class="mic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 11l1.7 7.1a2 2 0 0 0 2 1.6h6.6a2 2 0 0 0 2-1.6L19 11"/><path d="M3.5 11h17"/><path d="M12 3v2"/><path d="M5 11c2.4-1.6 4.6-2.4 7-2.4s4.6.8 7 2.4"/></svg></div>
+      <div class="mt">Modelar</div>
+      <div class="md">La convivencia: pizzas, sushi y un presupuesto acordado.</div>
+    </div>
+    <div class="mini card">
+      <div class="mic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 4.5 20.5 10 9 21.5 2 22l.5-7z"/><path d="m13 6.5 4.5 4.5"/></svg></div>
+      <div class="mt">Predecir</div>
+      <div class="md">¿Dónde queda la zona que cumple? Píntenla con color.</div>
+    </div>
+    <div class="mini card">
+      <div class="mic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+      <div class="mt">Verificar</div>
+      <div class="md">Sustituir puntos en 4x + 3y y comprobar la predicción.</div>
+    </div>
+    <div class="mini card">
+      <div class="mic"><svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m12 2 10 6-10 6L2 8Z"/><path d="m2 13 10 6 10-6" opacity=".55"/></svg></div>
+      <div class="mt">Interpretar</div>
+      <div class="md">Las fronteras del valor: dos rectas, una región.</div>
+    </div>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span></span>
+  </footer>
+</section>
+
+<!-- ============ DIAPOSITIVA 3 · LA CONVIVENCIA ============ -->
+<section class="slide">
+  <header class="s-head">
+    <span class="chip">Clase 5</span>
+    <h2 class="s-title">La Convivencia</h2>
+    <span class="chip ghost push">Del texto a las ecuaciones</span>
+  </header>
+
+  <div class="cols" style="margin-top:14px">
+    <div class="col" style="flex:1">
+      <div class="prob card">
+        <div class="prob-k">
+          <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11h18l-1.8 8.1a2 2 0 0 1-2 1.6H6.8a2 2 0 0 1-2-1.6L3 11z"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+          Problema · El curso se organiza
+        </div>
+        <p class="prob-t">El <b>1° Medio</b> organiza una <b>convivencia</b>. Un local ofrece <b>pizzas familiares</b> por <b>$4.000</b> y <b>cajas de sushi</b> por <b>$3.000</b>.</p>
+        <div class="menu-row">
+          <div class="menu-item">
+            <span class="mic2"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21c5-2.5 8-6.5 8-11a8 8 0 0 0-16 0c0 4.5 3 8.5 8 11z" opacity="0"/><path d="M3 6.5 21 3l-4.5 16.5L6 17z"/><circle cx="9" cy="9.5" r="1.3"/><circle cx="14" cy="10.5" r="1.3"/><circle cx="10.5" cy="14" r="1.3"/></svg></span>
+            <span><span class="mn">Pizza familiar</span><br><span class="mp">$4.000</span></span>
+          </div>
+          <div class="menu-item">
+            <span class="mic2"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></svg></span>
+            <span><span class="mn">Caja de sushi</span><br><span class="mp">$3.000</span></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="qbox">
+        <span class="qic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <p class="q" style="font-size:20px">El presupuesto acordado debe estar <em>estrictamente entre</em> $36.000 y $48.000.</p>
+      </div>
+
+      <div class="inst">
+        <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        <span><b>Anoten en sus cuadernos</b> las ecuaciones que puedan extraer de esta situación.</span>
+      </div>
+    </div>
+
+    <div class="col" style="width:472px;flex:none">
+      <div class="inter-card card" style="padding:16px 20px">
+        <div class="inter-k"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Puesta en común · ¿qué ecuaciones aparecen?</div>
+
+        <div class="eqline reveal"><span class="math"><var>x</var></span>&nbsp;= cantidad de pizzas&nbsp;·&nbsp;<span class="math"><var>y</var></span>&nbsp;= cajas de sushi</div>
+
+        <div class="eqline reveal" style="margin-top:10px"><span class="math">4.000<var>x</var> + 3.000<var>y</var> = 36.000</span></div>
+        <div class="eqline reveal" style="margin-top:10px"><span class="math">4.000<var>x</var> + 3.000<var>y</var> = 48.000</span></div>
+
+        <div class="note-card reveal" style="margin-top:12px;font-size:14.5px">Dividiendo por 1.000 (trabajamos <b>en miles de pesos</b>): <span class="math" style="font-size:17px"><b>4<var>x</var> + 3<var>y</var> = 36</b></span> y <span class="math" style="font-size:17px"><b>4<var>x</var> + 3<var>y</var> = 48</b></span>.</div>
+      </div>
+
+      <div class="note-card" style="background:var(--amber-soft);border-color:var(--amber-line);color:var(--amber-ink)">Ojo con la palabra <b>&ldquo;estrictamente&rdquo;</b>: gastar <b>exactamente</b> $36.000 o $48.000 <b>no</b> cumple el acuerdo.</div>
+    </div>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span><span class="hint"><span class="hintdot"></span>Clic para revelar las ecuaciones</span></span>
+  </footer>
+</section>
+
+<!-- ============ DIAPOSITIVA 4 · TRABAJO DE PREDICCIÓN ============ -->
+<section class="slide">
+  <header class="s-head">
+    <span class="chip">Clase 5</span>
+    <h2 class="s-title">Trabajo de Predicción</h2>
+    <span class="chip ghost push">Registro gráfico · ¿adentro o afuera?</span>
+  </header>
+
+  <div style="display:flex;gap:16px;margin-top:12px;align-items:stretch">
+    <div class="col" style="flex:1;gap:12px">
+      <div class="inter-card card" style="padding:16px 20px">
+        <div class="inter-k"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="5" r="2.5"/><path d="M12 7.5v4"/><path d="M5 21c1.5-3 4-4.5 7-4.5s5.5 1.5 7 4.5"/></svg>Paso 1 · Graficar</div>
+        <p style="font-size:16.5px;color:var(--ink);line-height:1.6"><b>Grafiquen ambas rectas</b> en el mismo plano. Les servimos los <b>cortes con los ejes</b>:</p>
+        <div class="zones" style="margin-top:10px">
+          <span class="zchip"><span class="zdot" style="background:var(--navy)"></span><span class="math">4<var>x</var> + 3<var>y</var> = 36</span>&nbsp;→ (9, 0) y (0, 12)</span>
+          <span class="zchip"><span class="zdot" style="background:var(--orange)"></span><span class="math">4<var>x</var> + 3<var>y</var> = 48</span>&nbsp;→ (12, 0) y (0, 16)</span>
+        </div>
+      </div>
+
+      <div class="note-card" style="font-size:14.5px">Cada recta cuesta <b>$36.000</b> o <b>$48.000</b> exactos: son los <b>bordes</b> del acuerdo. Pero el presupuesto permite <b>más opciones</b> de combinaciones&hellip; ¿dónde quedarán?</div>
+    </div>
+
+    <div class="plane-card card" style="flex:none">
+      <div class="plane-head">
+        <span class="chip soft" style="padding:5px 12px;font-size:12px"><span class="math">4<var>x</var> + 3<var>y</var> = <var>c</var></span>&nbsp;· valores en miles de $</span>
+        <span style="font-size:13px;color:var(--muted);font-weight:700">El plano de la convivencia</span>
+      </div>
+      <svg id="pSvg" viewBox="0 0 470 440" width="420" height="393" role="img" aria-label="Plano cartesiano donde se grafican las rectas 4x + 3y = 36 y 4x + 3y = 48">
+        <g id="pBase"></g>
+        <g id="pDyn"></g>
+      </svg>
+    </div>
+  </div>
+
+  <div class="qbox reveal" style="margin-top:12px">
+    <span class="qic"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    <p class="q" style="font-size:19.5px">Paso 2 · Predicción: ¿dónde creen que se ubican las combinaciones que <em>cumplen el presupuesto</em>? ¿<em>Adentro</em>, <em>afuera</em> o <em>en los límites</em>? Píntenlo con un lápiz de color.</p>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span><span class="hint"><span class="hintdot"></span>Clic: dibuja las rectas y luego la pregunta</span></span>
+  </footer>
+</section>
+
+<!-- ============ DIAPOSITIVA 5 · VERIFICACIÓN ============ -->
+<section class="slide">
+  <header class="s-head">
+    <span class="chip">Clase 5</span>
+    <h2 class="s-title">Verificación: probemos puntos</h2>
+    <span class="chip ghost push">Sustitución en 4x + 3y</span>
+  </header>
+
+  <div class="cols" style="margin-top:12px">
+    <div class="col" style="width:532px;flex:none;gap:10px">
+      <div class="plane-card card" style="padding:10px 14px;gap:6px">
+        <div class="plane-head">
+          <span class="chip soft" style="padding:5px 12px;font-size:12px"><span class="math">4<var>x</var> + 3<var>y</var> = <var>c</var></span>&nbsp;· valores en miles de $</span>
+          <span style="font-size:13px;color:var(--muted);font-weight:700">Haz clic en un punto para evaluarlo</span>
+        </div>
+        <svg id="vSvg" class="noclick" viewBox="0 0 470 440" width="500" height="468" role="img" aria-label="Plano con la zona entre las dos rectas y puntos clickeables para verificar la predicción">
+          <g id="vBase"></g>
+          <g id="vBand"></g>
+          <g id="vLines"></g>
+          <g id="vPts"></g>
+        </svg>
+      </div>
+    </div>
+
+    <div class="col" style="flex:1;gap:12px">
+      <div class="inst" style="font-size:16.5px;padding:12px 20px">
+        <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></svg>
+        <span>Escojan puntos <b>dentro</b>, <b>en los límites</b> y <b>fuera</b> de la zona pintada. <b>Reemplacen</b> esos puntos en la expresión <span class="math" style="font-size:18px"><b>4<var>x</var> + 3<var>y</var></b></span> para determinar si su predicción era certera o no.</span>
+      </div>
+
+      <div class="inter-card card" style="padding:14px 18px">
+        <div class="inter-k"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="15.5" x2="12.01" y2="15.5"/></svg>Boleta de verificación</div>
+        <p style="font-size:15px;color:var(--muted);font-weight:600">Punto elegido: <b id="outP" class="math" style="color:var(--navy);font-size:17px">(—, —)</b></p>
+        <div class="readout-eq">4·<i id="outX">x</i> + 3·<i id="outY">y</i> = <b id="outV">?</b> &nbsp;→&nbsp; $<b id="outD">—</b></div>
+        <div class="verdict" id="verdict"></div>
+      </div>
+
+      <div class="preset-row noclick">
+        <span style="font-size:13.5px;font-weight:700;color:var(--muted)">Categorías:</span>
+        <span class="zchip"><span class="zdot" style="background:var(--green)"></span>dentro: cumple</span>
+        <span class="zchip"><span class="zdot" style="background:#D9A441"></span>límite: no (es estricto)</span>
+        <span class="zchip"><span class="zdot" style="background:var(--red)"></span>fuera: no cumple</span>
+      </div>
+
+      <div class="synth reveal" style="margin-top:2px">Conclusión del sondeo: la zona que cumple es la <b>franja entre las dos rectas, sin incluirlas</b>: <span class="math" style="font-size:18px"><b>36 &lt; 4<var>x</var> + 3<var>y</var> &lt; 48</b></span>. Si pintaste esa franja, ¡tu predicción fue certera!</div>
+    </div>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span><span class="hint"><span class="hintdot"></span>Haz clic en los puntos del plano</span></span>
+  </footer>
+</section>
+
+<!-- ============ DIAPOSITIVA 6 · INSTITUCIONALIZACIÓN ============ -->
+<section class="slide">
+  <header class="s-head">
+    <span class="chip">Clase 5</span>
+    <h2 class="s-title">Las fronteras del valor</h2>
+    <span class="chip soft push">Cierre · Síntesis</span>
+  </header>
+
+  <div class="oa card concl" style="margin-top:12px">
+    <div class="oa-bar"></div>
+    <div class="oa-in" style="padding:16px 30px 14px">
+      <div class="oa-k">Texto clave para copiar en la guía · cópialo en tu cuaderno: es la síntesis oficial de la clase</div>
+      <p class="oa-t" style="font-size:19.5px">&ldquo;La expresión <span class="math"><i>f</i>(<var>x</var>, <var>y</var>) = 4<var>x</var> + 3<var>y</var></span> le asigna un <span class="hl-a">&lsquo;valor de costo&rsquo;</span> a cada punto del plano. Las rectas con <span class="math"><i>c</i> = 36</span> y <span class="math"><i>c</i> = 48</span> son las <span class="hl-c">fronteras</span>, y los valores posibles están <span class="hl-f">entre ellas</span>.&rdquo;</p>
+    </div>
+  </div>
+
+  <div class="cols" style="margin-top:12px">
+    <div class="col" style="flex:1;gap:12px">
+      <div class="reveal">
+        <div class="big-ineq"><span class="n36">36</span><span class="mid">&lt;</span><span class="math" style="font-weight:700">4<var>x</var> + 3<var>y</var></span><span class="mid">&lt;</span><span class="n48">48</span></div>
+        <p style="font-size:15px;color:var(--muted);font-weight:600;text-align:center;margin-top:8px">En símbolos: la franja que cumple el presupuesto, <b style="color:var(--navy)">sin las fronteras</b> (el acuerdo es estricto).</p>
+      </div>
+
+      <div class="conn reveal">
+        <span class="vic"><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 6 6v5"/></svg></span>
+        <p class="conn-t"><b>Conexión con las Clases 3 y 4:</b> allí, variar <span class="math"><var>c</var></span> movía la recta en paralelo y cada foto del radar era un valor de <span class="math"><var>c</var></span>. Hoy descubrimos el paso siguiente: <b>dos valores de <span class="math"><var>c</var></span> delimitan una región completa</b> del plano, y cada recta intermedia es una <b>línea de nivel</b> con el mismo costo.</p>
+      </div>
+    </div>
+
+    <div class="col" style="width:430px;flex:none">
+      <div class="mini-fam card">
+        <div class="plane-head">
+          <span class="chip soft" style="padding:5px 12px;font-size:12px">Líneas de nivel</span>
+          <button id="lvlBtn" class="btn ghost" type="button" style="padding:6px 14px;font-size:13px">Ver líneas de nivel</button>
+        </div>
+        <svg id="fSvg" viewBox="0 0 380 330" width="340" height="295" role="img" aria-label="Plano con las fronteras 36 y 48, la franja que cumple y las líneas de nivel intermedias">
+          <g id="fBase"></g>
+          <g id="fBand"></g>
+          <g id="fLines"></g>
+          <g id="fLvl" style="display:none"></g>
+        </svg>
+        <p class="img-cap">Cada recta intermedia es un <b>nivel</b>: todos sus puntos cuestan lo mismo. Ejemplo: <span class="math"><b><i>f</i>(6, 6) = 42</b></span>.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer class="s-foot">
+    <span>Unidad 2 · Matemática · I° Medio</span>
+    <span class="r"><span>Ecuaciones lineales de dos incógnitas</span><span class="hint"><span class="hintdot"></span>Botón: ver las líneas de nivel</span></span>
+  </footer>
+</section>
+</div>
+
+<div id="hud">
+  <button id="bPrev" aria-label="Diapositiva anterior" title="Anterior (←)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="14 6 8 12 14 18"/></svg></button>
+  <span class="cnt" id="counter">1 / 6</span>
+  <button id="bNext" aria-label="Diapositiva siguiente" title="Siguiente (→)"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="10 6 16 12 10 18"/></svg></button>
+</div>
+
+<script>
+(function(){
+  var stage=document.getElementById('stage');
+  var slides=Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var counter=document.getElementById('counter');
+  var bar=document.getElementById('progress');
+  var cur=0;
+  var pauseAnim=null;
+
+  function fit(){
+    var s=Math.min(window.innerWidth/1310,window.innerHeight/775);
+    stage.style.transform='translate(-50%,-50%) scale('+s+')';
+  }
+  window.addEventListener('resize',fit);fit();
+
+  function show(i){
+    i=Math.max(0,Math.min(slides.length-1,i));
+    slides.forEach(function(s,k){
+      s.classList.toggle('active',k===i);
+      s.classList.toggle('before',k<i);
+    });
+    cur=i;
+    counter.textContent=(i+1)+' / '+slides.length;
+    bar.style.width=((i+1)/slides.length*100)+'%';
+    if(pauseAnim)pauseAnim();
+  }
+  function next(){
+    var r=slides[cur].querySelector('.reveal:not(.shown):not(.noclick)');
+    if(r){r.classList.add('shown');return;}
+    show(cur+1);
+  }
+  function prev(){
+    var rs=slides[cur].querySelectorAll('.reveal.shown:not(.noclick)');
+    if(rs.length){rs[rs.length-1].classList.remove('shown');return;}
+    show(cur-1);
+  }
+  document.getElementById('bNext').addEventListener('click',next);
+  document.getElementById('bPrev').addEventListener('click',prev);
+
+  document.addEventListener('keydown',function(e){
+    var tag=e.target&&e.target.tagName;
+    if(tag==='INPUT')return;
+    if((e.key===' '||e.key==='Enter')&&tag==='BUTTON')return;
+    if(e.key==='ArrowRight'||e.key==='ArrowDown'||e.key==='PageDown'||e.key===' '||e.key==='Enter'){e.preventDefault();next();}
+    else if(e.key==='ArrowLeft'||e.key==='ArrowUp'||e.key==='PageUp'){e.preventDefault();prev();}
+    else if(e.key==='Home'){show(0);}
+    else if(e.key==='End'){show(slides.length-1);}
+  });
+
+  stage.addEventListener('click',function(e){
+    if(e.target.closest('button, .pt, .noclick, input'))return;
+    next();
+  });
+
+  /* ============ utilidades ============ */
+  function r1(v){return Math.round(v*10)/10;}
+  function fmt(v){return String(v*1000).replace(/\B(?=(\d{3})+(?!\d))/g,'.');}
+
+  /* Constructor de plano cartesiano: 4x + 3y = c */
+  function planeScene(cfg){
+    var px=function(x){return cfg.ox+cfg.u*x;};
+    var py=function(y){return cfg.oy-cfg.u*y;};
+    var s='';
+    var g='';
+    for(var i=cfg.xMin;i<=cfg.xMax;i++)g+='M'+r1(px(i))+' '+r1(py(cfg.yMax))+'V'+r1(py(cfg.yMin));
+    for(var j=cfg.yMin;j<=cfg.yMax;j++)g+='M'+r1(px(cfg.xMin))+' '+r1(py(j))+'H'+r1(px(cfg.xMax));
+    s+='<path d="'+g+'" class="grid-l" fill="none"/>';
+    s+='<line class="axl" x1="'+r1(px(cfg.xMin))+'" y1="'+r1(py(0))+'" x2="'+r1(px(cfg.xMax)+14)+'" y2="'+r1(py(0))+'"/>';
+    s+='<line class="axl" x1="'+r1(px(0))+'" y1="'+r1(py(cfg.yMin))+'" x2="'+r1(px(0))+'" y2="'+r1(py(cfg.yMax)-12)+'"/>';
+    s+='<polygon points="'+r1(px(cfg.xMax)+18)+','+r1(py(0))+' '+r1(px(cfg.xMax)+8)+','+r1(py(0)-4.5)+' '+r1(px(cfg.xMax)+8)+','+r1(py(0)+4.5)+'" fill="#16305A"/>';
+    s+='<polygon points="'+r1(px(0))+','+r1(py(cfg.yMax)-16)+' '+r1(px(0)-4.5)+','+r1(py(cfg.yMax)-6)+' '+r1(px(0)+4.5)+','+r1(py(cfg.yMax)-6)+'" fill="#16305A"/>';
+    for(var k=cfg.xMin;k<=cfg.xMax;k+=cfg.tx){
+      if(k===0)continue;
+      s+='<text class="tick" x="'+r1(px(k))+'" y="'+r1(py(0)+18)+'" text-anchor="middle">'+sn(k)+'</text>';
+    }
+    for(var m=2;m<=cfg.yMax;m+=2){
+      s+='<text class="tick" x="'+r1(px(0)-8)+'" y="'+r1(py(m)+4)+'" text-anchor="end">'+m+'</text>';
+    }
+    s+='<text class="axname" x="'+r1(px(cfg.xMax)+12)+'" y="'+r1(py(0)-12)+'" text-anchor="end">x</text>';
+    s+='<text class="axname" x="'+r1(px(0)+12)+'" y="'+r1(py(cfg.yMax)-14)+'">y</text>';
+    document.getElementById(cfg.base).innerHTML=s;
+    return {px:px,py:py,u:cfg.u};
+  }
+  function sn(v){return String(v).replace('-','\u2212');}
+  /* extremos de la recta 4x+3y=c en coordenadas de unidad */
+  function lvEnds(rr,c){
+    var xA=-2,yA=(c-4*xA)/3,xB=16,yB=(c-4*xB)/3;
+    return [rr.px(xA),rr.py(yA),rr.px(xB),rr.py(yB)];
+  }
+  function lvLine(rr,c,cls){
+    var e=lvEnds(rr,c);
+    return '<line class="'+cls+'" x1="'+r1(e[0])+'" y1="'+r1(e[1])+'" x2="'+r1(e[2])+'" y2="'+r1(e[3])+'"/>';
+  }
+  function bandLine(rr){
+    var e=lvEnds(rr,42);
+    return '<line class="band" x1="'+r1(e[0])+'" y1="'+r1(e[1])+'" x2="'+r1(e[2])+'" y2="'+r1(e[3])+'" stroke-width="'+r1(rr.u*2.4)+'"/>';
+  }
+
+  /* ============ diapositiva 4 · plano de predicción ============ */
+  var P4=planeScene({base:'pBase',u:23.5,ox:70,oy:404,xMin:-2,xMax:16,yMin:-1,yMax:16,tx:2});
+  (function(){
+    var g1='<g class="reveal">'
+      +lvLine(P4,36,'fron f36')
+      +'<circle class="corte" cx="'+r1(P4.px(9))+'" cy="'+r1(P4.py(0))+'" r="4.5" stroke="#16305A"/>'
+      +'<circle class="corte" cx="'+r1(P4.px(0))+'" cy="'+r1(P4.py(12))+'" r="4.5" stroke="#16305A"/>'
+      +'<text class="lab36" x="'+r1(P4.px(7.05)+6)+'" y="'+r1(P4.py(2.6)+4)+'">4x + 3y = 36</text>'
+      +'</g>';
+    var g2='<g class="reveal">'
+      +lvLine(P4,48,'fron f48')
+      +'<circle class="corte" cx="'+r1(P4.px(12))+'" cy="'+r1(P4.py(0))+'" r="4.5" stroke="#C2570A"/>'
+      +'<circle class="corte" cx="'+r1(P4.px(0))+'" cy="'+r1(P4.py(16))+'" r="4.5" stroke="#C2570A"/>'
+      +'<text class="lab48" x="'+r1(P4.px(2.2)+8)+'" y="'+r1(P4.py(13.07)+4)+'">4x + 3y = 48</text>'
+      +'</g>';
+    document.getElementById('pDyn').innerHTML=g1+g2;
+  })();
+
+  /* ============ diapositiva 5 · verificación con puntos ============ */
+  var P5=planeScene({base:'vBase',u:23.5,ox:70,oy:404,xMin:-2,xMax:16,yMin:-1,yMax:16,tx:2});
+  document.getElementById('vBand').innerHTML=bandLine(P5);
+  (function(){
+    var s=lvLine(P5,36,'fron f36')+lvLine(P5,48,'fron f48')
+      +'<text class="lab36" x="'+r1(P5.px(7.05)+6)+'" y="'+r1(P5.py(2.6)+4)+'">4x + 3y = 36</text>'
+      +'<text class="lab48" x="'+r1(P5.px(2.2)+8)+'" y="'+r1(P5.py(13.07)+4)+'">4x + 3y = 48</text>';
+    document.getElementById('vLines').innerHTML=s;
+  })();
+  var PTS=[
+    [2,4],[1,10],[3,8],[6,6],[3,9],[9,4],[11,1],[9,6]
+  ];
+  (function(){
+    var s='';
+    for(var i=0;i<PTS.length;i++){
+      var x=PTS[i][0],y=PTS[i][1],X=P5.px(x),Y=P5.py(y);
+      var left=x<=3;
+      var lx=left?X+11:X-11,anch=left?'start':'end';
+      s+='<g class="pt" data-i="'+i+'" role="button" aria-label="Punto ('+x+', '+y+')">'
+        +'<circle class="hit" cx="'+r1(X)+'" cy="'+r1(Y)+'" r="14" fill="transparent"/>'
+        +'<circle class="halo" cx="'+r1(X)+'" cy="'+r1(Y)+'" r="12"/>'
+        +'<circle class="dot" cx="'+r1(X)+'" cy="'+r1(Y)+'" r="6.5"/>'
+        +'<text x="'+r1(lx)+'" y="'+r1(Y-10)+'" text-anchor="'+anch+'">('+x+', '+sn(y)+')</text>'
+        +'</g>';
+    }
+    document.getElementById('vPts').innerHTML=s;
+  })();
+  var outP=document.getElementById('outP'),outX=document.getElementById('outX'),outY=document.getElementById('outY'),
+      outV=document.getElementById('outV'),outD=document.getElementById('outD'),verdict=document.getElementById('verdict');
+  function setVerdict(cls,html){verdict.className='verdict on '+cls;verdict.innerHTML=html;}
+  var vPts=document.getElementById('vPts');
+  vPts.addEventListener('click',function(ev){
+    var g=ev.target.closest('.pt');
+    if(!g)return;
+    var i=+g.getAttribute('data-i');
+    var x=PTS[i][0],y=PTS[i][1],v=4*x+3*y;
+    outP.textContent='('+x+', '+sn(y)+')';
+    outX.textContent=x;outY.textContent=y;
+    outV.textContent=sn(v);
+    outD.textContent=fmt(v);
+    var color;
+    if(v<36){color='#DC2626';setVerdict('no','<b>Fuera de la zona</b> (por debajo): 4·'+x+' + 3·'+y+' = <b>'+sn(v)+' &lt; 36</b>. Cuesta sólo $'+fmt(v)+': <b>no alcanza</b> el presupuesto mínimo.');}
+    else if(v>48){color='#DC2626';setVerdict('no','<b>Fuera de la zona</b> (por arriba): 4·'+x+' + 3·'+y+' = <b>'+sn(v)+' &gt; 48</b>. Cuesta $'+fmt(v)+': <b>se pasa</b> del presupuesto.');}
+    else if(v===36||v===48){color='#D9A441';setVerdict('sand','<b>En la frontera</b>: '+v+' &rarr; $'+fmt(v)+' exactos. El presupuesto es <b>estricto</b>: los bordes <b>no</b> se incluyen &rarr; <b>no cumple</b>.');}
+    else{color='#16A34A';setVerdict('ok','<b>¡Dentro de la zona!</b> 36 &lt; '+v+' &lt; 48: cuesta $'+fmt(v)+', <b>sí cumple</b> el presupuesto.');}
+    var dot=g.querySelector('.dot'),halo=g.querySelector('.halo');
+    dot.style.fill=color;halo.style.stroke=color;halo.style.opacity=.55;
+  });
+
+  /* ============ diapositiva 6 · líneas de nivel ============ */
+  var P6=planeScene({base:'fBase',u:16.5,ox:52,oy:296,xMin:-2,xMax:16,yMin:-1,yMax:16,tx:2});
+  document.getElementById('fBand').innerHTML=bandLine(P6);
+  document.getElementById('fLines').innerHTML=
+    lvLine(P6,36,'fron f36')+lvLine(P6,48,'fron f48')
+    +'<text class="lab36" x="'+r1(P6.px(6.9)+5)+'" y="'+r1(P6.py(2.8)+4)+'" style="font-size:12.5px">c = 36</text>'
+    +'<text class="lab48" x="'+r1(P6.px(10.875)+5)+'" y="'+r1(P6.py(1.5)+4)+'" style="font-size:12.5px">c = 48</text>';
+  (function(){
+    var s='';
+    for(var c=38;c<=46;c+=2){
+      s+=lvLine(P6,c,c===42?'lvl lvl42':'lvl');
+    }
+    var X=P6.px(6),Y=P6.py(6);
+    s+='<circle cx="'+r1(X)+'" cy="'+r1(Y)+'" r="12.5" fill="none" stroke="#F97316" stroke-opacity=".5" stroke-width="2.5"/>'
+      +'<circle cx="'+r1(X)+'" cy="'+r1(Y)+'" r="6" fill="#F97316" stroke="#fff" stroke-width="2.4"/>'
+      +'<text class="lvllab lvl42" x="'+r1(X+14)+'" y="'+r1(Y+22)+'" style="font-size:13px">f(6, 6) = 42</text>';
+    document.getElementById('fLvl').innerHTML=s;
+  })();
+  var lvlBtn=document.getElementById('lvlBtn'),fLvl=document.getElementById('fLvl');
+  lvlBtn.addEventListener('click',function(){
+    var on=fLvl.style.display!=='none';
+    fLvl.style.display=on?'none':'';
+    lvlBtn.textContent=on?'Ver líneas de nivel':'Ocultar líneas de nivel';
+  });
+
+  show(0);
+})();
+</script>
+</body>
+</html>
